@@ -209,7 +209,7 @@ def export_extreme_points_to_xlsx(results, run_dir, sweep, template_path="exampl
                     if is_mirrored and axis == 'Y':
                         val = -val
 
-                    new_row[col_idx] = round(val, 3)
+                    new_row[col_idx] = round(abs(val), 3)
 
         output_data.append(new_row)
 
