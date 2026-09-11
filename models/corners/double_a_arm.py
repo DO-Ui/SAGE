@@ -12,6 +12,11 @@ log = get_logger(__name__)
 import numpy as np
 from scipy.optimize import least_squares
 
+# Distance from the inboard CV joint's centre to its axis-direction reference
+# point (Inboard_CV_Axis_Point) -- purely a visualization/CAD aid, not a
+# physical dimension, so it's a fixed constant rather than a hardpoint.
+_CV_AXIS_OFFSET_MM = 100.0
+
 class DoubleAArmNumeric:
     def __init__(self, hp, axle: Axle):
         self.hp = hp
@@ -171,7 +176,23 @@ class DoubleAArmNumeric:
         n_ib_dir = 1.0 if hp.piv_ib[1] > 0 else -1.0
         n_ib = np.array([0.0, n_ib_dir, 0.0])
         n_ob = Rw @ self.local_spindle_axis
-        axle_state = self.axle.get_state(hp.piv_ib, piv_ob, n_ib, n_ob)
+
+        # Inboard CV joint plunges along its fixed differential-output axis
+        # (X, Z pinned at the static pivot_inboard; only Y slides) so the shaft
+        # keeps its true rigid length instead of a phantom stretch/compression.
+        dx = piv_ob[0] - hp.piv_ib[0]
+        dz = piv_ob[2] - hp.piv_ib[2]
+        rem = self.axle_static_len**2 - dx**2 - dz**2
+        if rem < 0:
+            log.debug("corner solve: travel/steer put the axle out of the CV joint's reach (rem=%.2f)", rem)
+            return None
+        dy = np.sqrt(rem)
+        piv_ib_y = min((piv_ob[1] + dy, piv_ob[1] - dy), key=lambda yy: abs(yy - hp.piv_ib[1]))
+        piv_ib = np.array([hp.piv_ib[0], piv_ib_y, hp.piv_ib[2]])
+        cv_axis_point = piv_ib - _CV_AXIS_OFFSET_MM * n_ib
+
+        axle_state = self.axle.get_state(piv_ib, piv_ob, n_ib, n_ob)
+        axle_state["plunge_mm"] = float(piv_ib[1] - hp.piv_ib[1])
 
         step = {
             "lbj": lbj,
@@ -183,8 +204,9 @@ class DoubleAArmNumeric:
             "wc": wc,
             "s_ib": hp.s_ib,
             "s_ob": sha,
-            "piv_ib": hp.piv_ib,
+            "piv_ib": piv_ib,
             "piv_ob": piv_ob,
+            "cv_axis_point": cv_axis_point,
             "tr_ib": tr_ib_offset,
             "tr_ob": tr_ob,
             "wheel_axis": n_ob,

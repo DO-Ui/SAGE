@@ -66,13 +66,16 @@ def pack_points_nicely(vehicle, id, step):
     """
     pkg = {}
     hp = vehicle.get_corner_from_id(id).hardpoints
-    
+
     for name in hp.names:
         if name in step.keys():
             pkg[name] = step[name]
         else:
             pkg[name] = getattr(hp, name)
-            
+
+    if "cv_axis_point" in step:
+        pkg["cv_axis_point"] = step["cv_axis_point"]
+
     return pkg
 
 def export_static_hardpoints(vehicle, settled_step, hardpoints_name, run_dir):
@@ -148,8 +151,8 @@ def export_extreme_points_to_xlsx(results, run_dir, sweep, template_path="exampl
         'Wheel_Spindle_Point':             ('front', 'piv_ob'),
         'Wheel_Centre_Point':              ('front', 'wc'),
         'Inboard_CV_Centre':               ('front', 'piv_ib'),
-        'Inboard_CV_Axis_Point':           ('front', 'piv_ib'), 
-        'Inner_CV_Axis_Point':             ('front', 'piv_ib'),
+        'Inboard_CV_Axis_Point':           ('front', 'cv_axis_point'),
+        'Inner_CV_Axis_Point':             ('front', 'cv_axis_point'),
         
         'Front_Trailing_Link_Pivot':       ('rear', 'tl_f'),
         'Bottom_Inner_Camber_Link_Pivot':  ('rear', 'lcl_ib'),
@@ -205,7 +208,7 @@ def export_extreme_points_to_xlsx(results, run_dir, sweep, template_path="exampl
                     elif axis == 'Z': val = coords[2]
                     if is_mirrored and axis == 'Y':
                         val = -val
-                        
+
                     new_row[col_idx] = round(val, 3)
 
         output_data.append(new_row)
