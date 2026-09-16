@@ -176,10 +176,11 @@ class DoubleAArmNumeric:
         n_ib = np.array([0.0, n_ib_dir, 0.0])
         n_ob = Rw @ self.local_spindle_axis
 
-        # Inboard U-joint is fixed at its static pivot (no CV-style slip-plane
-        # slide) -- the axle shaft itself telescopes, so axle.get_state() derives
-        # plunge from the change in piv_ib-to-piv_ob length instead.
-        piv_ib = hp.piv_ib
+        piv_ib = self.axle.resolve_inboard(piv_ob)
+        if piv_ib is None:
+            log.debug("corner solve: travel/steer put the axle out of its %s reach",
+                      type(self.axle.axle_type).__name__)
+            return None
         cv_axis_point = piv_ib - _CV_AXIS_OFFSET_MM * n_ib
 
         axle_state = self.axle.get_state(piv_ib, piv_ob, n_ib, n_ob)
